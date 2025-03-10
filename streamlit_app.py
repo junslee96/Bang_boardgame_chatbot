@@ -30,7 +30,7 @@ for i in range(1, 12):  # 1부터 11까지
     rulebook_contents.append(content)
 
 # QA 데이터 읽기
-qa_data_path = f'https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/qa종합_최종_modified_수정.xlsx'
+qa_data_path = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/qa종합_최종_modified_수정.xlsx"
 qa_df = pd.read_excel(qa_data_path, engine='openpyxl')
 
 # 기존 documents 리스트에 룰북과 QA 데이터 추가
