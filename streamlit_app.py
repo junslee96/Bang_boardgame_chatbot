@@ -5,6 +5,8 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
 import requests
+pip install --upgrade streamlit
+pip install --upgrade torch torchvision
 
 # 룰북 파일 읽기
 def read_rulebook(file_path):
