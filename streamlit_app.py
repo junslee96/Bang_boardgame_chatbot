@@ -59,9 +59,10 @@ X = model.encode(documents)
 # 유사 문서 검색 함수 개선(질문 문서 1개 -> 여러 개)
 def retrieve_similar_documents(query, top_k=3):
     query_vec = model.encode([query])
-    similarities = np.matmul(X, query_vec.T).flatten()
+    similarities = np.dot(X, query_vec.T).flatten()
     top_indices = similarities.argsort()[-top_k:][::-1]
     return [documents[i] for i in top_indices]
+
 
 
 # '사람'을 '플레이어'로 대체하는 함수
