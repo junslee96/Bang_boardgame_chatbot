@@ -5,7 +5,6 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
 import requests
-from sklearn.metrics.pairwise import cosine_similarity
 
 # 깃허브 저장소 정보
 owner = "junslee96"
@@ -58,11 +57,10 @@ model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-c
 X = model.encode(documents)
 
 
-
 # 유사 문서 검색 함수 개선(질문 문서 1개 -> 여러 개)
 def retrieve_similar_documents(query, top_k=3):
     query_vec = model.encode([query])
-    similarities = cosine_similarity(X, query_vec).flatten()
+    similarities = np.dot(X, query_vec.T).flatten()
     top_indices = similarities.argsort()[-top_k:][::-1]
     return [documents[i] for i in top_indices]
 
