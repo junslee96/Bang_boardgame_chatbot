@@ -4,21 +4,33 @@ import openai
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
+import requests
 
 # 룰북 파일 읽기
 def read_rulebook(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         return file.read()
+        
+# 깃허브 저장소 정보
+owner = "junslee96"
+repo = "Bang_boardgame_chatbot"
+file_path = "prompt_data/"
+
+# 깃허브 API URL
+url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}"
+
+# 파일 내용 읽기
+response = requests.get(url)
 
 # 룰북 파일들 읽기
 rulebook_contents = []
 for i in range(1, 12):  # 1부터 11까지
-    file_path = f'/Bang_boardgame_chatbot/prompt_data/뱅!_룰북_{i}.txt'
+    file_path = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/뱅!_룰북_{i}.txt"
     content = read_rulebook(file_path)
     rulebook_contents.append(content)
 
 # QA 데이터 읽기
-qa_data_path = '/Bang_boardgame_chatbot/prompt_data/qa종합_최종_modified_수정.xlsx'
+qa_data_path = f'https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/qa종합_최종_modified_수정.xlsx'
 qa_df = pd.read_excel(qa_data_path, engine='openpyxl')
 
 # 기존 documents 리스트에 룰북과 QA 데이터 추가
