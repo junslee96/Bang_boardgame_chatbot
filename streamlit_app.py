@@ -25,12 +25,14 @@ response = requests.get(url)
 # 룰북 파일들 읽기
 rulebook_contents = []
 for i in range(1, 12):  # 1부터 11까지
-    file_path = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/뱅!_룰북_{i}.txt"
+    url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/뱅!_룰북_{i}.txt"
+    file_path = requests.get(url)
     content = read_rulebook(file_path)
     rulebook_contents.append(content)
 
 # QA 데이터 읽기
-qa_data_path = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/qa종합_최종_modified_수정.xlsx"
+qa_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/qa종합_최종_modified_수정.xlsx"
+qa_data_path = requests.get(qa_data_url)
 qa_df = pd.read_excel(qa_data_path, engine='openpyxl')
 
 # 기존 documents 리스트에 룰북과 QA 데이터 추가
