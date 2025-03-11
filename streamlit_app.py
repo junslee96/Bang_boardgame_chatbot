@@ -56,15 +56,22 @@ documents = chunked_documents
 model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
 X = model.encode(documents)
 
+# 벡터화된 데이터의 차원 확인 (디버깅용)
+print(f"X shape: {X.shape}")
 
 # 유사 문서 검색 함수 개선(질문 문서 1개 -> 여러 개)
 def retrieve_similar_documents(query, top_k=3):
-    query_vec = model.encode([query])
-    similarities = np.dot(X, query_vec.T).flatten()
-    top_indices = similarities.argsort()[-top_k:][::-1]
-    return [documents[i] for i in top_indices]
-
-
+    try:
+        query_vec = model.encode([query])
+        print(f"query_vec shape: {query_vec.shape}")  # 디버깅용 출력
+        
+        # 차원 불일치 해결을 위해 query_vec.T[0] 사용
+        similarities = np.dot(X, query_vec.T[0]).flatten()
+        top_indices = similarities.argsort()[-top_k:][::-1]
+        return [documents[i] for i in top_indices]
+    except Exception as e:
+        print(f"Error in retrieve_similar_documents: {e}")
+        return []
 
 # '사람'을 '플레이어'로 대체하는 함수
 def replace_terms(text):
@@ -108,25 +115,29 @@ else:
         # 질문에 '사람'을 '플레이어'로 대체
         modified_question = replace_terms(prompt)
 
-        # 유사한 문서 검색
-        retrieved_docs = retrieve_similar_documents(modified_question)
+        try:
+            # 유사한 문서 검색
+            retrieved_docs = retrieve_similar_documents(modified_question)
 
-        # 컨텍스트 생성
-        context = "\n".join(retrieved_docs)
-        answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
+            # 컨텍스트 생성
+            context = "\n".join(retrieved_docs)
+            answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
 
-        # OpenAI API를 사용하여 답변 생성
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "assistant", "content": answer_prompt}
-            ],
-            max_tokens=200,
-            stream=False
-        )
+            # OpenAI API를 사용하여 답변 생성
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "assistant", "content": answer_prompt}
+                ],
+                max_tokens=200,
+                stream=False
+            )
 
-        # 답변 저장 및 표시
-        answer = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": answer})
-        with st.chat_message("assistant"):
-            st.markdown(answer)
+            # 답변 저장 및 표시
+            answer = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+        
+        except Exception as e:
+            st.error(f"An error occurred while generating a response: {e}")
