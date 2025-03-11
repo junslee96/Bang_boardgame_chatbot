@@ -14,13 +14,13 @@ file_path = "prompt_data"
 # 룰북 파일들 읽기
 rulebook_contents = []
 for i in range(1, 12):  # 1부터 11까지
-    url = f"https://github.com/{owner}/{repo}/tree/f04b55896bf5605a0ac9be2d6fc23b0724230c40/{file_path}/뱅!_룰북_{i}.txt"
+    url = f"https://github.com/{owner}/{repo}/tree/main/{file_path}/뱅!_룰북_{i}.txt"
     response = requests.get(url)
     if response.status_code == 200:
         rulebook_contents.append(response.text)
 
 # QA 데이터 읽기
-qa_data_url = f"https://github.com/{owner}/{repo}/tree/f04b55896bf5605a0ac9be2d6fc23b0724230c40/{file_path}/qa종합_최종_modified_수정.xlsx"
+qa_data_url = f"https://github.com/{owner}/{repo}/tree/main/{file_path}/qa종합_최종_modified_수정.xlsx"
 response = requests.get(qa_data_url)
 if response.status_code == 200:
     # 엑셀 파일을 읽기 위해 임시 파일로 저장
