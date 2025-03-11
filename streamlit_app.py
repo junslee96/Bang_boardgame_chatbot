@@ -9,7 +9,7 @@ import requests
 # 깃허브 저장소 정보
 owner = "junslee96"
 repo = "Bang_boardgame_chatbot"
-file_path = "prompt_data/"
+file_path = "prompt_data"
 
 # 룰북 파일들 읽기
 rulebook_contents = []
