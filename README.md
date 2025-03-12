@@ -11,6 +11,8 @@ A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
    ```
    $ pip install -r requirements.txt
    $ pip install sentence-transformers
+   $ pip install openpyxl
+   $ pip install --upgrade openai
    ```
 
 2. Run the app
