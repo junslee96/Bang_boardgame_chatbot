@@ -8,9 +8,7 @@ import requests
 import json
 import nest_asyncio
 import asyncio
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
+from konlpy.tag import Okt
 
 nest_asyncio.apply()
 
@@ -32,9 +30,6 @@ output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_
 
 # json 파일 읽기 및 데이터 준비
 def load_data():
-    import nltk
-    nltk.download('punkt')
-    nltk.download('stopwords')
     try:
         response_merged = requests.get(merged_data_url)
         if response_merged.status_code == 200:
@@ -104,24 +99,23 @@ st.write(
     "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
     "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
 )
+
 # create_context 함수 정의
 def create_context(retrieved_docs):
     # 문서 중에서 가장 관련성 높은 문장만 추출
-    from nltk.tokenize import sent_tokenize
-    from nltk.corpus import stopwords
-    stop_words = set(stopwords.words('korean'))
+    okt = Okt()
+    stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '으로서', '으로부터', '에서', '부터', '까지', '까지의', '까지의 것', '까지의 사람', '까지의 것들', '까지의 사람들'])
     
     relevant_sentences = []
     for doc in retrieved_docs:
-        sentences = sent_tokenize(doc)
+        sentences = okt.sentences(doc)
         for sentence in sentences:
-            # 문장 길이가 10단어 이상이고, 키워드가 포함된 문장만 선택
-            words = sentence.split()
-            if len(words) > 10 and any(word not in stop_words for word in words):
+            # 문장 길이가 10단어 이상이고, 불용어가 포함되지 않은 문장만 선택
+            morphs = okt.morphs(sentence)
+            if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
                 relevant_sentences.append(sentence)
     
     return '\n'.join(relevant_sentences)
-
 
 # Ask user for their OpenAI API key via `st.text_input`.
 openai_api_key = st.text_input("OpenAI API Key", type="password")
