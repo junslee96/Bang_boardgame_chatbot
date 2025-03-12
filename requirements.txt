@@ -1,7 +1,5 @@
 streamlit==1.41.0
-torch==2.6.0+cu116
-torchvision==0.21.0+cu116
-torchaudio==2.6.0+cu116
+openai
 sentence-transformers
 pandas
 numpy
