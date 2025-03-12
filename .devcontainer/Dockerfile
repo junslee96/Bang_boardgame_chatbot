@@ -6,10 +6,14 @@ RUN apt update && apt install -y git curl openjdk-11-jdk-headless
 # JAVA_HOME 환경 변수 설정
 ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
 ENV PATH "$PATH:$JAVA_HOME/bin"
+ENV LD_LIBRARY_PATH $JAVA_HOME/lib/server:$LD_LIBRARY_PATH
 
 # pip 사용하여 Python 패키지 설치
 COPY requirements.txt /tmp/
 RUN pip3 install --user -r /tmp/requirements.txt
+
+# konlpy 패키지 설치
+RUN pip3 install --user konlpy
 
 # Tornado 및 nest_asyncio 설치
 RUN pip3 install --user tornado==6.2 nest-asyncio
