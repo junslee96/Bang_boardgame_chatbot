@@ -6,4 +6,4 @@ numpy
 requests
 tornado==6.2
 nest-asyncio
-konlpy
+ekonlpy
