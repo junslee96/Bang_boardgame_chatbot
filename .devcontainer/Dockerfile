@@ -8,7 +8,7 @@ COPY requirements.txt /tmp/
 RUN pip3 install --user -r /tmp/requirements.txt
 
 # Tornado 및 nest_asyncio 설치
-RUN pip3 install --user tornado==5.0 nest-asyncio
+RUN pip3 install --user tornado==6.2 nest-asyncio
 
 # 작업 디렉토리 설정
 WORKDIR /workspaces
