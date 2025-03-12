@@ -30,7 +30,25 @@ output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_
 # json 파일 읽기 및 데이터 준비
 def load_data():
     try:
-        # ... (기존 코드)
+        response_merged = requests.get(merged_data_url)
+        if response_merged.status_code == 200:
+            merged_data = response_merged.json()
+        else:
+            print(f"Failed to read merged data. Status code: {response_merged.status_code}")
+            return None
+
+        response_qa = requests.get(output_data_url)
+        if response_qa.status_code == 200:
+            qa_data = response_qa.json()
+            qa_df = pd.DataFrame(qa_data)
+        else:
+            print(f"Failed to read QA data. Status code: {response_qa.status_code}")
+            qa_df = None
+
+        documents = []
+        for item in merged_data:
+            if 'content' in item:
+                documents.append(item['content'])
 
         qa_data = []
         if qa_df is not None:
