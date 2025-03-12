@@ -28,10 +28,9 @@ else:
 # json 파일 읽기
 response_merged = requests.get(merged_data_url)
 
-if response_merged.status_code == 200 and response_output.status_code == 200:
+if response_merged.status_code == 200
     # json 데이터 로드
     merged_data = response_merged.json()
-    output_data = response_output.json()
     
     # 기존 documents 리스트에 룰북과 QA 데이터 추가
     documents = []
@@ -47,7 +46,6 @@ if response_merged.status_code == 200 and response_output.status_code == 200:
         documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
     else:
       print("json 파일을 읽을 수 없습니다.")
-    documents = []
 
 # 청크 크기 조정 및 청크 생성(학습 데이터 잘 읽히기)
 def chunk_text(text, chunk_size=200):
