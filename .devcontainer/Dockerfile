@@ -7,8 +7,8 @@ RUN apt update && apt install -y git curl
 COPY requirements.txt /tmp/
 RUN pip3 install --user -r /tmp/requirements.txt
 
-# Tornado 및 nest_asyncio 설치
-RUN pip3 install --user tornado==6.2 nest-asyncio
+# NLTK 데이터 다운로드 추가
+RUN python3 -m nltk.downloader punkt stopwords wordnet averaged_perceptron_tagger
 
 # 작업 디렉토리 설정
 WORKDIR /workspaces
