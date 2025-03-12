@@ -1,4 +1,7 @@
 streamlit
-sentence-transformers
-openpyxl
 openai
+sentence-transformers
+pandas
+numpy
+requests
+json
