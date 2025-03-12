@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:1-3.11-bullseye
+FROM mcr.microsoft.com/devcontainers/python:1-3.10-bullseye
 
 # 필요한 패키지 설치
 RUN apt update && apt install -y git curl
