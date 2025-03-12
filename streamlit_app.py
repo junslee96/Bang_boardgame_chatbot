@@ -13,18 +13,11 @@ repo = "Bang_boardgame_chatbot"
 file_path = "prompt_data"
 
 # 룰북 파일들 읽기
-rulebook_contents = []
-for i in range(1, 12):  # 1부터 11까지
-    url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
-    response = requests.get(url)
-    if response.status_code == 200:
-        rulebook_contents.append(response.text)
-    else:
-        print(f"Failed to read file {i}. Status code: {response.status_code}")
+merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
 
 # QA 데이터 읽기
-qa_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
-response = requests.get(qa_data_url)
+output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
+response = requests.get(output_data_url)
 if response.status_code == 200:
     qa_data = response.json()  # JSON 파일을 직접 읽기
     qa_df = pd.DataFrame(qa_data)  # JSON 데이터를 DataFrame으로 변환
@@ -32,16 +25,29 @@ else:
     print(f"Failed to read QA data. Status code: {response.status_code}")
     qa_df = None
 
-# 기존 documents 리스트에 룰북과 QA 데이터 추가
-documents = []
+# json 파일 읽기
+response_merged = requests.get(merged_data_url)
 
-# 룰북 내용 추가
-documents.extend(rulebook_contents)
+if response_merged.status_code == 200 and response_output.status_code == 200:
+    # json 데이터 로드
+    merged_data = response_merged.json()
+    output_data = response_output.json()
+    
+    # 기존 documents 리스트에 룰북과 QA 데이터 추가
+    documents = []
 
-# QA 데이터 추가
-if qa_df is not None:
-    for _, row in qa_df.iterrows():
+    # 룰북 내용 추가
+    for item in merged_data:
+        if 'content' in item:
+            documents.append(item['content'])
+
+    # QA 데이터 추가
+    if qa_df is not None:
+      for _, row in qa_df.iterrows():
         documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
+    else:
+      print("json 파일을 읽을 수 없습니다.")
+    documents = []
 
 # 청크 크기 조정 및 청크 생성(학습 데이터 잘 읽히기)
 def chunk_text(text, chunk_size=200):
@@ -81,34 +87,6 @@ def replace_terms(text):
         text = re.sub(key, value, text)
     return text
 
-# RAG 답변 생성 함수
-def rag_answer(client, question):
-    # 관련 문서 검색
-    retrieved_docs = retrieve_similar_documents(question)
-    
-    # 문서의 중요 부분만 추출하여 컨텍스트 생성
-    context_parts = []
-    for doc in retrieved_docs:
-        # 문서의 첫 100자만 사용하는 예시
-        context_parts.append(doc[:100])
-    
-    context = "\n".join(context_parts)
-    
-    # LLM용 프롬프트 생성
-    answer_prompt = f"컨텍스트: {context}\n\n질문: {question}\n답변:"
-    
-    # LLM을 사용하여 답변 생성
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "assistant", "content": answer_prompt}
-        ],
-        max_tokens=200,
-        stream=False
-    )
-    
-    return response.choices[0].message.content
-
 # Show title and description.
 st.title("💬 Chatbot")
 st.write(
@@ -145,10 +123,25 @@ else:
         modified_question = replace_terms(prompt)
 
         try:
-            # RAG 답변 생성 함수 호출
-            answer = rag_answer(client, modified_question)
-            
+            # 유사한 문서 검색
+            retrieved_docs = retrieve_similar_documents(modified_question)
+
+            # 컨텍스트 생성
+            context = "\n".join(retrieved_docs)
+            answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
+
+            # OpenAI API를 사용하여 답변 생성
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "assistant", "content": answer_prompt}
+                ],
+                max_tokens=200,
+                stream=False
+            )
+
             # 답변 저장 및 표시
+            answer = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": answer})
             with st.chat_message("assistant"):
                 st.markdown(answer)
