@@ -174,7 +174,7 @@ else:
               messages=[
                   {"role": "assistant", "content": answer_prompt}
               ],
-              max_tokens=250,
+              max_tokens=1000,
               stream=False
           )
 
