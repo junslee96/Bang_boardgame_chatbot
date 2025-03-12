@@ -1,6 +1,10 @@
-streamlit
-openai
+streamlit==1.41.0
+torch==2.6.0+cu116
+torchvision==0.21.0+cu116
+torchaudio==2.6.0+cu116
 sentence-transformers
 pandas
 numpy
 requests
+tornado==5.0
+nest-asyncio
