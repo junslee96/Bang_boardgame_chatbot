@@ -71,12 +71,27 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
         model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
         query_vec = model.encode([query])
+        
+        # 문서의 청크별 임베딩을 사용하여 유사성을 계산
         similarities = np.dot(X, query_vec.T[0]).flatten()
         top_indices = similarities.argsort()[-top_k:][::-1]
-        return [documents[i] for i in top_indices]
+        
+        # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
+        chunk_to_doc_map = {}
+        for i, doc in enumerate(documents):
+            chunk_to_doc_map[i] = doc
+        
+        # top_k 개의 문서 인덱스를 전체 문서로 매핑
+        top_docs = []
+        for idx in top_indices:
+            top_docs.append(chunk_to_doc_map[idx])
+        
+        return top_docs
+    
     except Exception as e:
         print(f"Error in retrieve_similar_documents: {e}")
         return []
+
 
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
@@ -84,19 +99,45 @@ def replace_terms(text):
         text = re.sub(key, value, text)
     return text
 
+# Show title and description.
+st.title("💬 Chatbot")
+st.write(
+    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses. "
+    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+)
 def create_context(retrieved_docs):
-    mecab = Mecab()  # eKoNLPy의 Mecab 형태소 분석기 사용
+    mecab = Mecab()
     stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
     
     relevant_sentences = []
     for doc in retrieved_docs:
-        sentences = doc.split('. ')  # 간단한 문장 분리 (Mecab에 문장 분리 기능 없음)
+        sentences = doc.split('. ')
         for sentence in sentences:
             morphs = mecab.morphs(sentence)
             if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
                 relevant_sentences.append(sentence)
     
-    return '\n'.join(relevant_sentences)
+    # 문장의 중요도를 평가하여 상위 N개의 문장을 선택
+    sentence_scores = []
+    for sentence in relevant_sentences:
+        score = len([morph for morph in mecab.morphs(sentence) if morph not in stop_words])
+        sentence_scores.append((sentence, score))
+    
+    top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
+    return '\n'.join([sentence for sentence, _ in top_sentences])
+
+def replace_terms(text):
+    replace_dict = {'사람': '플레이어'}
+    for key, value in replace_dict.items():
+        text = re.sub(key, value, text)
+    return text
+
+# 질문 변환 기법 적용
+def transform_query(query):
+    # 예: 질문에 관련된 키워드를 추가하거나, 질문의 문맥을 명확히 하는 등의 변환
+    transformed_query = query + " 관련 정보"
+    return transformed_query
 
 openai_api_key = st.text_input("OpenAI API Key", type="password")
 if not openai_api_key:
@@ -121,9 +162,10 @@ else:
           st.markdown(prompt)
 
       modified_question = replace_terms(prompt)
-
+      transformed_query = transform_query(modified_question)  # 질문 변환 적용
+      
       try:
-          retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
+          retrieved_docs = retrieve_similar_documents(transformed_query, st.session_state.chunked_documents, st.session_state.X)
           context = create_context(retrieved_docs)
           answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
 
