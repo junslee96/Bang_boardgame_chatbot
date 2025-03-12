@@ -4,4 +4,3 @@ sentence-transformers
 pandas
 numpy
 requests
-json
