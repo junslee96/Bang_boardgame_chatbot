@@ -4,5 +4,5 @@ sentence-transformers
 pandas
 numpy
 requests
-tornado==5.0
+tornado==6.2
 nest-asyncio
