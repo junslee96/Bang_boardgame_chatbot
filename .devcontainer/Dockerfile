@@ -7,6 +7,12 @@ RUN apt update && apt install -y git curl
 COPY requirements.txt /tmp/
 RUN pip3 install --user -r /tmp/requirements.txt
 
+# Tornado 버전 조정
+RUN pip3 install --user tornado==5.0
+
+# nest_asyncio 설치
+RUN pip3 install --user nest_asyncio
+
 # streamlit 설치
 RUN pip3 install --user streamlit
 
