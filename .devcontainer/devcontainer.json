@@ -18,10 +18,9 @@
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit tornado==6.2 nest-asyncio; echo '✅ Packages installed and Requirements met'",
-  "postAttachCommand": {
-    "server": "streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
-  },
+  "postCreateCommand": [
+    "python3 -m nltk.downloader punkt stopwords wordnet averaged_perceptron_tagger"
+  ],
   "portsAttributes": {
     "8501": {
       "label": "Application",
