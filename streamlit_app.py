@@ -53,7 +53,7 @@ def load_data():
         if qa_df is not None:
             for _, row in qa_df.iterrows():
                 documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
-
+                print(documents[:5])  # 첫 5개의 문서를 출력
         return documents
     except Exception as e:
         print(f"Error loading data: {e}")
