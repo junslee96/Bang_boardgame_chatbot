@@ -16,5 +16,3 @@ WORKDIR /workspaces
 # Streamlit 실행 명령어 설정
 CMD ["streamlit", "run", "streamlit_app.py", "--server.enableCORS", "false", "--server.enableXsrfProtection", "false"]
 
-# NLTK 데이터 다운로드 추가
-RUN python3 -m nltk.downloader punkt stopwords wordnet averaged_perceptron_tagger
