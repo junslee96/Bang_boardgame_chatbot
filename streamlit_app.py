@@ -13,10 +13,10 @@ repo = "Bang_boardgame_chatbot"
 file_path = "prompt_data"
 
 # 룰북 파일들 읽기
-merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/merged_data.json"
+merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
 
 # QA 데이터 읽기
-output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/output_data.json"
+output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
 
 # json 파일 읽기
 response_merged = requests.get(merged_data_url)
