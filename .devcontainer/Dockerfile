@@ -1,5 +1,11 @@
+FROM mcr.microsoft.com/devcontainers/python:1-3.10-bullseye
+
 # 필요한 시스템 패키지 설치 (Java 포함)
 RUN apt update && apt install -y git curl openjdk-11-jdk-headless
+
+# JAVA_HOME 환경 변수 설정
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
+ENV PATH "$PATH:$JAVA_HOME/bin"
 
 # pip 사용하여 Python 패키지 설치
 COPY requirements.txt /tmp/
