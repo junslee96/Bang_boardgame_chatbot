@@ -7,7 +7,14 @@ import re
 import requests
 import json
 import nest_asyncio
+import asyncio
+
 nest_asyncio.apply()
+
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # 깃허브 저장소 정보
 owner = "junslee96"
