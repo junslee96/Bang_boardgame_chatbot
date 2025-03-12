@@ -1,3 +1,4 @@
 streamlit
 sentence-transformers
+openpyxl
 openai
