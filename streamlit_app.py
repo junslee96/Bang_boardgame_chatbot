@@ -17,60 +17,58 @@ merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_
 
 # QA 데이터 읽기
 output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
-response = requests.get(output_data_url)
-if response.status_code == 200:
-    qa_data = response.json()  # JSON 파일을 직접 읽기
-    qa_df = pd.DataFrame(qa_data)  # JSON 데이터를 DataFrame으로 변환
-else:
-    print(f"Failed to read QA data. Status code: {response.status_code}")
-    qa_df = None
 
-# json 파일 읽기
-response_merged = requests.get(merged_data_url)
+# json 파일 읽기 및 데이터 준비
+def load_data():
+    try:
+        response_merged = requests.get(merged_data_url)
+        if response_merged.status_code == 200:
+            merged_data = response_merged.json()
+        else:
+            print(f"Failed to read merged data. Status code: {response_merged.status_code}")
+            return None
 
-if response_merged.status_code == 200:
-    # json 데이터 로드
-    merged_data = response_merged.json()
-    
-    # 기존 documents 리스트에 룰북과 QA 데이터 추가
-    documents = []
+        response_qa = requests.get(output_data_url)
+        if response_qa.status_code == 200:
+            qa_data = response_qa.json()
+            qa_df = pd.DataFrame(qa_data)
+        else:
+            print(f"Failed to read QA data. Status code: {response_qa.status_code}")
+            qa_df = None
 
-    # 룰북 내용 추가
-    for item in merged_data:
-        if 'content' in item:
-            documents.append(item['content'])
+        documents = []
+        for item in merged_data:
+            if 'content' in item:
+                documents.append(item['content'])
 
-    # QA 데이터 추가
-    if qa_df is not None:
-      for _, row in qa_df.iterrows():
-        documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
-    else:
-      print("json 파일을 읽을 수 없습니다.")
+        if qa_df is not None:
+            for _, row in qa_df.iterrows():
+                documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
 
-# 청크 크기 조정 및 청크 생성(학습 데이터 잘 읽히기)
+        return documents
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return None
+
+# 청크 크기 조정 및 청크 생성
 def chunk_text(text, chunk_size=200):
     words = text.split()
     return [' '.join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
 
-chunked_documents = []
-for doc in documents:
-    chunked_documents.extend(chunk_text(doc))
-documents = chunked_documents
-
 # 벡터화(문장 조리있게 정리)
-model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
-X = model.encode(documents)
+def vectorize_documents(documents):
+    model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
+    chunked_documents = []
+    for doc in documents:
+        chunked_documents.extend(chunk_text(doc))
+    X = model.encode(chunked_documents)
+    return chunked_documents, X
 
-# 벡터화된 데이터의 차원 확인 (디버깅용)
-print(f"X shape: {X.shape}")
-
-# 유사 문서 검색 함수 개선(질문 문서 1개 -> 여러 개)
-def retrieve_similar_documents(query, top_k=3):
+# 유사 문서 검색 함수
+def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
+        model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
         query_vec = model.encode([query])
-        print(f"query_vec shape: {query_vec.shape}")  # 디버깅용 출력
-        
-        # 차원 불일치 해결을 위해 query_vec.T[0] 사용
         similarities = np.dot(X, query_vec.T[0]).flatten()
         top_indices = similarities.argsort()[-top_k:][::-1]
         return [documents[i] for i in top_indices]
@@ -110,6 +108,11 @@ else:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # Load data only once when the app starts
+    if "documents" not in st.session_state:
+        st.session_state.documents = load_data()
+        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+
     # Create a chat input field to allow the user to enter a message.
     if prompt := st.chat_input("What is up?"):
         # Store and display the current prompt.
@@ -122,7 +125,7 @@ else:
 
         try:
             # 유사한 문서 검색
-            retrieved_docs = retrieve_similar_documents(modified_question)
+            retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
 
             # 컨텍스트 생성
             context = "\n".join(retrieved_docs)
