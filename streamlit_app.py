@@ -142,9 +142,10 @@ def transform_query(query):
     return transformed_query
 
 # Streamlit 앱 시작
-st.title("💬 Chatbot")
+st.title("🤠 뱅 보드게임 챗봇")
 st.write(
-    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses. "
+    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses./n
+    '뱅 보드게임에서'라는 말과 함께 질문해주세요!"
 )
 
 openai_api_key = st.text_input("OpenAI API Key", type="password")
