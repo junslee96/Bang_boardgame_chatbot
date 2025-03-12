@@ -144,7 +144,7 @@ def transform_query(query):
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
 st.write(
-    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses."
+    "OpenAI의 gpt-4o-mini 모델을 사용해서 만든 간단한 생성형 챗봇입니다."
     "'뱅 보드게임에서'라는 말과 함께 질문해주세요!"
 )
 
