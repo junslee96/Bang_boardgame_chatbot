@@ -6,3 +6,4 @@ numpy
 requests
 tornado==6.2
 nest-asyncio
+nltk  # 추가된 라이브러리
