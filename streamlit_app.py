@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
 import requests
+import json
 
 # 깃허브 저장소 정보
 owner = "junslee96"
@@ -12,35 +13,35 @@ repo = "Bang_boardgame_chatbot"
 file_path = "prompt_data"
 
 # 룰북 파일들 읽기
-rulebook_contents = []
-for i in range(1, 12):  # 1부터 11까지
-    url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/뱅!_룰북_{i}.txt"
-    response = requests.get(url)
-    if response.status_code == 200:
-        rulebook_contents.append(response.text)
+merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/merged_data.json"
 
 # QA 데이터 읽기
-qa_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/qa종합_최종_modified_수정.xlsx"
-response = requests.get(qa_data_url)
-if response.status_code == 200:
-    # 엑셀 파일을 읽기 위해 임시 파일로 저장
-    with open("temp.xlsx", "wb") as file:
-        file.write(response.content)
-    qa_df = pd.read_excel("temp.xlsx", engine='openpyxl')
-else:
-    print("QA 데이터를 읽을 수 없습니다.")
-    qa_df = None
+output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/tree/main/{file_path}/output_data.json"
 
-# 기존 documents 리스트에 룰북과 QA 데이터 추가
-documents = []
+# json 파일 읽기
+response_merged = requests.get(merged_data_url)
+response_output = requests.get(output_data_url)
 
-# 룰북 내용 추가
-documents.extend(rulebook_contents)
+if response_merged.status_code == 200 and response_output.status_code == 200:
+    # json 데이터 로드
+    merged_data = response_merged.json()
+    output_data = response_output.json()
+    
+    # 기존 documents 리스트에 룰북과 QA 데이터 추가
+    documents = []
 
-# QA 데이터 추가
-if qa_df is not None:
-    for _, row in qa_df.iterrows():
-        documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
+    # 룰북 내용 추가
+    for item in merged_data:
+        if 'content' in item:
+            documents.append(item['content'])
+
+    # QA 데이터 추가
+    for item in output_data:
+        if '질문' in item and '답변' in item:
+            documents.append(f"질문: {item['질문']} 답변: {item['답변']}")
+    else:
+    print("json 파일을 읽을 수 없습니다.")
+    documents = []
 
 # 청크 크기 조정 및 청크 생성(학습 데이터 잘 읽히기)
 def chunk_text(text, chunk_size=200):
