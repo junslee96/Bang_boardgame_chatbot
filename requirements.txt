@@ -2,3 +2,4 @@ streamlit
 sentence-transformers
 openpyxl
 openai
+--upgrade openai
