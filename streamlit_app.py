@@ -28,7 +28,7 @@ else:
 # json 파일 읽기
 response_merged = requests.get(merged_data_url)
 
-if response_merged.status_code == 200
+if response_merged.status_code == 200:
     # json 데이터 로드
     merged_data = response_merged.json()
     
