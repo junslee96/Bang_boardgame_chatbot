@@ -6,6 +6,15 @@ import numpy as np
 import re
 import requests
 import json
+import nest_asyncio
+import asyncio
+
+nest_asyncio.apply()
+
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # 깃허브 저장소 정보
 owner = "junslee96"
@@ -44,7 +53,7 @@ def load_data():
         if qa_df is not None:
             for _, row in qa_df.iterrows():
                 documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
-
+                print(documents[:5])  # 첫 5개의 문서를 출력
         return documents
     except Exception as e:
         print(f"Error loading data: {e}")
@@ -146,6 +155,6 @@ else:
             st.session_state.messages.append({"role": "assistant", "content": answer})
             with st.chat_message("assistant"):
                 st.markdown(answer)
-
+        
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
