@@ -122,40 +122,38 @@ else:
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
     # Create a chat input field to allow the user to enter a message.
-    # ...
-
     if prompt := st.chat_input("What is up?"):
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-    
-        # 질문에 '사람'을 '플레이어'로 대체
-        modified_question = replace_terms(prompt)
-    
-        try:
-            # 유사한 문서 검색 (Retrieve 단계)
-            retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
-    
-            # 컨텍스트 생성 (Augment 단계)
-            context = create_context(retrieved_docs)  # 관련성 높은 문장만 추출
-            answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
-    
-            # OpenAI API를 사용하여 답변 생성 (Generate 단계)
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",  # 다른 모델을 사용해볼 수 있음
-                messages=[
-                    {"role": "assistant", "content": answer_prompt}
-                ],
-                max_tokens=250,  # 토큰 수 조정
-                stream=False
-            )
-    
-            # 답변 저장 및 표시
-            answer = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-            with st.chat_message("assistant"):
-                st.markdown(answer)
-        
-        except Exception as e:
-            st.error(f"An error occurred while generating a response: {e}")
+      # Store and display the current prompt.
+      st.session_state.messages.append({"role": "user", "content": prompt})
+      with st.chat_message("user"):
+          st.markdown(prompt)
+
+      # 질문에 '사람'을 '플레이어'로 대체
+      modified_question = replace_terms(prompt)
+
+      try:
+          # 유사한 문서 검색 (Retrieve 단계)
+          retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
+
+          # 컨텍스트 생성 (Augment 단계)
+          context = create_context(retrieved_docs)  # 관련성 높은 문장만 추출
+          answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
+
+          # OpenAI API를 사용하여 답변 생성 (Generate 단계)
+          response = client.chat.completions.create(
+              model="gpt-4o-mini",  # 다른 모델을 사용해볼 수 있음
+              messages=[
+                  {"role": "assistant", "content": answer_prompt}
+              ],
+              max_tokens=250,  # 토큰 수 조정
+              stream=False
+          )
+
+          # 답변 저장 및 표시
+          answer = response.choices[0].message.content
+          st.session_state.messages.append({"role": "assistant", "content": answer})
+          with st.chat_message("assistant"):
+              st.markdown(answer)
+      
+      except Exception as e:
+          st.error(f"An error occurred while generating a response: {e}")
