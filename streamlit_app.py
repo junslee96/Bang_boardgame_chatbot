@@ -6,6 +6,8 @@ import numpy as np
 import re
 import requests
 import json
+import nest_asyncio
+nest_asyncio.apply()
 
 # 깃허브 저장소 정보
 owner = "junslee96"
