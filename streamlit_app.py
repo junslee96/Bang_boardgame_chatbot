@@ -145,7 +145,7 @@ def transform_query(query):
 st.title("🤠 뱅 보드게임 챗봇")
 st.write(
     "OpenAI의 gpt-4o-mini 모델을 사용해서 만든 간단한 생성형 챗봇입니다."
-    "'뱅 보드게임에서'라는 말과 함께 질문해주세요!"
+    " '뱅 보드게임에서'라는 말과 함께 질문해주세요!"
 )
 
 openai_api_key = st.text_input("OpenAI API Key", type="password")
