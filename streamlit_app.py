@@ -8,7 +8,7 @@ import requests
 import json
 import nest_asyncio
 import asyncio
-from konlpy.tag import Okt
+from ekonlpy.tag import Mecab  # eKoNLPy 사용
 
 nest_asyncio.apply()
 
@@ -22,13 +22,9 @@ owner = "junslee96"
 repo = "Bang_boardgame_chatbot"
 file_path = "prompt_data"
 
-# 룰북 파일들 읽기
 merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
-
-# QA 데이터 읽기
 output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
 
-# json 파일 읽기 및 데이터 준비
 def load_data():
     try:
         response_merged = requests.get(merged_data_url)
@@ -59,12 +55,10 @@ def load_data():
         print(f"Error loading data: {e}")
         return None
 
-# 청크 크기 조정 및 청크 생성
 def chunk_text(text, chunk_size=200):
     words = text.split()
     return [' '.join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
 
-# 벡터화(문장 조리있게 정리)
 def vectorize_documents(documents):
     model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
     chunked_documents = []
@@ -73,7 +67,6 @@ def vectorize_documents(documents):
     X = model.encode(chunked_documents)
     return chunked_documents, X
 
-# 유사 문서 검색 함수
 def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
         model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
@@ -85,89 +78,64 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
         print(f"Error in retrieve_similar_documents: {e}")
         return []
 
-# '사람'을 '플레이어'로 대체하는 함수
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
     for key, value in replace_dict.items():
         text = re.sub(key, value, text)
     return text
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
-
-# create_context 함수 정의
 def create_context(retrieved_docs):
-    # 문서 중에서 가장 관련성 높은 문장만 추출
-    okt = Okt()
-    stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '으로서', '으로부터', '에서', '부터', '까지', '까지의', '까지의 것', '까지의 사람', '까지의 것들', '까지의 사람들'])
+    mecab = Mecab()  # eKoNLPy의 Mecab 형태소 분석기 사용
+    stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
     
     relevant_sentences = []
     for doc in retrieved_docs:
-        sentences = okt.sentences(doc)
+        sentences = doc.split('. ')  # 간단한 문장 분리 (Mecab에 문장 분리 기능 없음)
         for sentence in sentences:
-            # 문장 길이가 10단어 이상이고, 불용어가 포함되지 않은 문장만 선택
-            morphs = okt.morphs(sentence)
+            morphs = mecab.morphs(sentence)
             if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
                 relevant_sentences.append(sentence)
     
     return '\n'.join(relevant_sentences)
 
-# Ask user for their OpenAI API key via `st.text_input`.
 openai_api_key = st.text_input("OpenAI API Key", type="password")
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
 else:
-    # Create an OpenAI client.
     client = openai.OpenAI(api_key=openai_api_key)
 
-    # Create a session state variable to store the chat messages.
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display the existing chat messages via `st.chat_message`.
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Load data only once when the app starts
     if "documents" not in st.session_state:
         st.session_state.documents = load_data()
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
-    # Create a chat input field to allow the user to enter a message.
     if prompt := st.chat_input("What is up?"):
-      # Store and display the current prompt.
       st.session_state.messages.append({"role": "user", "content": prompt})
       with st.chat_message("user"):
           st.markdown(prompt)
 
-      # 질문에 '사람'을 '플레이어'로 대체
       modified_question = replace_terms(prompt)
 
       try:
-          # 유사한 문서 검색 (Retrieve 단계)
           retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
-
-          # 컨텍스트 생성 (Augment 단계)
-          context = create_context(retrieved_docs)  # 관련성 높은 문장만 추출
+          context = create_context(retrieved_docs)
           answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
 
-          # OpenAI API를 사용하여 답변 생성 (Generate 단계)
           response = client.chat.completions.create(
-              model="gpt-4o-mini",  # 다른 모델을 사용해볼 수 있음
+              model="gpt-4o-mini",
               messages=[
                   {"role": "assistant", "content": answer_prompt}
               ],
-              max_tokens=250,  # 토큰 수 조정
+              max_tokens=250,
               stream=False
           )
 
-          # 답변 저장 및 표시
           answer = response.choices[0].message.content
           st.session_state.messages.append({"role": "assistant", "content": answer})
           with st.chat_message("assistant"):
