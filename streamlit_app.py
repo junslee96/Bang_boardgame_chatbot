@@ -92,20 +92,6 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
         print(f"Error in retrieve_similar_documents: {e}")
         return []
 
-
-def replace_terms(text):
-    replace_dict = {'사람': '플레이어'}
-    for key, value in replace_dict.items():
-        text = re.sub(key, value, text)
-    return text
-
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
 def create_context(retrieved_docs):
     mecab = Mecab()
     stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
@@ -127,6 +113,23 @@ def create_context(retrieved_docs):
     top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
     return '\n'.join([sentence for sentence, _ in top_sentences])
 
+def generate_response(query):
+    retrieved_docs = retrieve_similar_documents(query, st.session_state.chunked_documents, st.session_state.X)
+    context = create_context(retrieved_docs)
+    answer_prompt = f"컨텍스트: {context}\n\n질문: {query}\n답변:"
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "assistant", "content": answer_prompt}
+        ],
+        max_tokens=1000,
+        stream=False
+    )
+    
+    answer = response.choices[0].message.content
+    return answer
+
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
     for key, value in replace_dict.items():
@@ -135,9 +138,14 @@ def replace_terms(text):
 
 # 질문 변환 기법 적용
 def transform_query(query):
-    # 예: 질문에 관련된 키워드를 추가하거나, 질문의 문맥을 명확히 하는 등의 변환
     transformed_query = query + " 관련 정보"
     return transformed_query
+
+# Streamlit 앱 시작
+st.title("💬 Chatbot")
+st.write(
+    "This is a simple chatbot that uses OpenAI's gpt-4o-mini model to generate responses. "
+)
 
 openai_api_key = st.text_input("OpenAI API Key", type="password")
 if not openai_api_key:
@@ -148,40 +156,25 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
     if "documents" not in st.session_state:
         st.session_state.documents = load_data()
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
     if prompt := st.chat_input("What is up?"):
-      st.session_state.messages.append({"role": "user", "content": prompt})
-      with st.chat_message("user"):
-          st.markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-      modified_question = replace_terms(prompt)
-      transformed_query = transform_query(modified_question)  # 질문 변환 적용
-      
-      try:
-          retrieved_docs = retrieve_similar_documents(transformed_query, st.session_state.chunked_documents, st.session_state.X)
-          context = create_context(retrieved_docs)
-          answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
-
-          response = client.chat.completions.create(
-              model="gpt-4o-mini",
-              messages=[
-                  {"role": "assistant", "content": answer_prompt}
-              ],
-              max_tokens=1000,
-              stream=False
-          )
-
-          answer = response.choices[0].message.content
-          st.session_state.messages.append({"role": "assistant", "content": answer})
-          with st.chat_message("assistant"):
-              st.markdown(answer)
-      
-      except Exception as e:
-          st.error(f"An error occurred while generating a response: {e}")
+        modified_question = replace_terms(prompt)
+        
+        try:
+            answer = generate_response(modified_question)
+            
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+            
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+        
+        except Exception as e:
+            st.error(f"An error occurred while generating a response: {e}")
