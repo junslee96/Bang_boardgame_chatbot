@@ -132,6 +132,7 @@ def generate_response(query):
             {"role": "assistant", "content": answer_prompt}
         ],
         max_tokens=1000,
+        temperature=0.2,  # 낮은 온도 설정
         stream=False
     )
     
