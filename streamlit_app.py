@@ -25,6 +25,7 @@ file_path = "prompt_data"
 merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
 output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
 
+
 def load_data():
     try:
         response_merged = requests.get(merged_data_url)
@@ -58,9 +59,11 @@ def load_data():
         print(f"Error loading data: {e}")
         return None, None
 
+
 def chunk_text(text, chunk_size=200):
     words = text.split()
     return [' '.join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
+
 
 def vectorize_documents(documents):
     model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
@@ -69,6 +72,7 @@ def vectorize_documents(documents):
         chunked_documents.extend(chunk_text(doc))
     X = model.encode(chunked_documents)
     return chunked_documents, X
+
 
 def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
@@ -100,6 +104,7 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
         print(f"Error in retrieve_similar_documents: {e}")
         return []
 
+
 def create_context(retrieved_docs):
     mecab = Mecab()
     stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
@@ -121,10 +126,15 @@ def create_context(retrieved_docs):
     top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
     return '\n'.join([sentence for sentence, _ in top_sentences])
 
-def generate_response(query, conversation_history):
+
+def generate_response(query, conversation_history, persona_profile):
+    # 데이터가 없으면 에러 메시지 반환
+    if not st.session_state.chunked_documents or not st.session_state.X:
+        return "현재 데이터가 초기화되지 않았습니다. 데이터를 다시 로드해주세요."
+
     retrieved_docs = retrieve_similar_documents(query, st.session_state.chunked_documents, st.session_state.X)
     context = create_context(retrieved_docs)
-    answer_prompt = f"{conversation_history}\n\n질문: {query}\n답변:"
+    answer_prompt = f"{persona_profile}\n\n{conversation_history}\n\n질문: {query}\n답변:"
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -141,16 +151,19 @@ def generate_response(query, conversation_history):
     answer = response.choices[0].message.content
     return answer
 
+
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
     for key, value in replace_dict.items():
         text = re.sub(key, value, text)
     return text
 
+
 # 질문 변환 기법 적용
 def transform_query(query):
     transformed_query = query + " 관련 정보"
     return transformed_query
+
 
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
@@ -169,8 +182,31 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "documents" not in st.session_state:
-    st.session_state.documents = load_data()
-    st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+    st.session_state.documents = load_data() or []
+
+if "chunked_documents" not in st.session_state:
+    if st.session_state.documents:
+        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+    else:
+        st.session_state.chunked_documents = []
+        st.session_state.X = []
+
+
+# 페르소나 프로필 생성
+persona_profile = """
+이름: 뱅! 보드게임 가이드
+나이: 25-40세
+관심사: 서부 시대, 보드게임, 전략, 협동
+역할: 보안관, 부관, 무법자, 배신자
+목표: 게임에서 승리하기 위해 역할에 맞는 목표를 달성
+특성: 전략적이고, 상황에 맞게 적응하며, 때로는 위험을 감수하기도 함
+
+예시 대화:
+"안녕하세요! 뱅! 보드게임을 시작하기 전에, 각 역할의 목표와 규칙을 잘 이해하시면 좋습니다. 보안관은 무법자와 배신자를 제거해야 하며, 무법자는 보안관을 제거하는 것이 목표입니다. 부관은 보안관을 돕고, 배신자는 혼자 살아남는 것이 목표입니다. 게임 중에 궁금한 점이 있으면 언제든지 물어보세요!"
+
+"무법자 역할을 맡으신 분들은 주의하세요! 보안관이 당신을 찾아올 수 있습니다. 전략적으로 행동하세요!"
+"""
+
 
 # 대화 기록 출력 (기존 메시지 유지)
 for message in st.session_state.messages:
@@ -192,7 +228,7 @@ if prompt := st.chat_input("What is up?"):
         # 대화 기록 생성 (모든 메시지를 포함)
         conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
 
-        answer = generate_response(modified_question, conversation_history)
+        answer = generate_response(modified_question, conversation_history, persona_profile)
 
         # 답변 추가 및 출력
         st.session_state.messages.append({"role": "assistant", "content": answer})
