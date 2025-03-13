@@ -33,7 +33,7 @@ def load_data():
             merged_data = response_merged.json()
         else:
             print(f"Failed to read merged data. Status code: {response_merged.status_code}")
-            return None, None
+            return None
 
         response_qa = requests.get(output_data_url)
         if response_qa.status_code == 200:
@@ -57,7 +57,7 @@ def load_data():
         return documents
     except Exception as e:
         print(f"Error loading data: {e}")
-        return None, None
+        return None
 
 
 def chunk_text(text, chunk_size=200):
@@ -79,11 +79,9 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
         model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
         query_vec = model.encode([query])
 
-        # 문서의 청크별 임베딩을 사용하여 유사성을 계산
         similarities = np.dot(X, query_vec.T[0]).flatten()
         top_indices = similarities.argsort()[-top_k:][::-1]
 
-        # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
         chunk_to_doc_map = {}
         chunk_index = 0
         for doc in documents:
@@ -92,7 +90,6 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
                 chunk_to_doc_map[chunk_index] = doc
                 chunk_index += 1
 
-        # top_k 개의 문서 인덱스를 전체 문서로 매핑
         top_docs = []
         for idx in top_indices:
             if idx in chunk_to_doc_map:
@@ -117,7 +114,6 @@ def create_context(retrieved_docs):
             if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
                 relevant_sentences.append(sentence)
 
-    # 문장의 중요도를 평가하여 상위 N개의 문장을 선택
     sentence_scores = []
     for sentence in relevant_sentences:
         score = len([morph for morph in mecab.morphs(sentence) if morph not in stop_words])
@@ -128,11 +124,10 @@ def create_context(retrieved_docs):
 
 
 def generate_response(query, conversation_history, persona_profile):
-    # 데이터가 없으면 에러 메시지 반환
-    if not st.session_state.chunked_documents or not st.session_state.X:
+    if "chunked_documents" not in st.session_state or "X" not in st.session_state:
         return "현재 데이터가 초기화되지 않았습니다. 데이터를 다시 로드해주세요."
 
-    retrieved_docs = retrieve_similar_documents(query, st.session_state.chunked_documents, st.session_state.X)
+    retrieved_docs = retrieve_similar_documents(query, st.session_state["chunked_documents"], st.session_state["X"])
     context = create_context(retrieved_docs)
     answer_prompt = f"{persona_profile}\n\n{conversation_history}\n\n질문: {query}\n답변:"
 
@@ -159,13 +154,11 @@ def replace_terms(text):
     return text
 
 
-# 질문 변환 기법 적용
 def transform_query(query):
     transformed_query = query + " 관련 정보"
     return transformed_query
 
 
-# Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
 st.write(
     "OpenAI의 gpt-4o-mini 모델을 사용해서 만든 간단한 생성형 챗봇입니다."
@@ -177,22 +170,20 @@ if not openai_api_key:
 else:
     client = openai.OpenAI(api_key=openai_api_key)
 
-# 대화 기록 초기화 및 유지
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state["messages"] = []
 
 if "documents" not in st.session_state:
-    st.session_state.documents = load_data() or []
+    st.session_state["documents"] = load_data() or []
 
-if "chunked_documents" not in st.session_state:
-    if st.session_state.documents:
-        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+if "chunked_documents" not in st.session_state or "X" not in st.session_state:
+    if st.session_state["documents"]:
+        st.session_state["chunked_documents"], st.session_state["X"] = vectorize_documents(st.session_state["documents"])
     else:
-        st.session_state.chunked_documents = []
-        st.session_state.X = []
+        st.session_state["chunked_documents"] = []
+        st.session_state["X"] = []
 
 
-# 페르소나 프로필 생성
 persona_profile = """
 이름: 뱅! 보드게임 가이드
 나이: 25-40세
@@ -202,37 +193,28 @@ persona_profile = """
 특성: 전략적이고, 상황에 맞게 적응하며, 때로는 위험을 감수하기도 함
 
 예시 대화:
-"안녕하세요! 뱅! 보드게임을 시작하기 전에, 각 역할의 목표와 규칙을 잘 이해하시면 좋습니다. 보안관은 무법자와 배신자를 제거해야 하며, 무법자는 보안관을 제거하는 것이 목표입니다. 부관은 보안관을 돕고, 배신자는 혼자 살아남는 것이 목표입니다. 게임 중에 궁금한 점이 있으면 언제든지 물어보세요!"
-
-"무법자 역할을 맡으신 분들은 주의하세요! 보안관이 당신을 찾아올 수 있습니다. 전략적으로 행동하세요!"
+"안녕하세요! 뱅! 보드게임을 시작하기 전에..."
 """
 
-
-# 대화 기록 출력 (기존 메시지 유지)
-for message in st.session_state.messages:
+for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 새로운 질문 처리 및 추가
 if prompt := st.chat_input("What is up?"):
-
-    # 사용자 메시지 추가 및 출력
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
+    st.session_state["messages"].append({"role": "user", "content": prompt})
+    
     with st.chat_message("user"):
         st.markdown(prompt)
 
     modified_question = replace_terms(prompt)
 
     try:
-        # 대화 기록 생성 (모든 메시지를 포함)
-        conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
-
+        conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state["messages"]])
+        
         answer = generate_response(modified_question, conversation_history, persona_profile)
-
-        # 답변 추가 및 출력
-        st.session_state.messages.append({"role": "assistant", "content": answer})
-
+        
+        st.session_state["messages"].append({"role": "assistant", "content": answer})
+        
         with st.chat_message("assistant"):
             st.markdown(answer)
 
