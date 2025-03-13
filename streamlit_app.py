@@ -18,7 +18,7 @@ except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
 # 파일 업로더 위젯 추가
-uploaded_file = st.file_uploader("첨부파일을 선택하세요 (merged_data.json)")
+uploaded_file = st.file_uploader("첨부파일을 선택하세요.")
 
 if uploaded_file is not None:
     # 업로드된 파일을 JSON으로 로딩
@@ -41,6 +41,10 @@ if uploaded_file is not None:
     st.session_state.documents = documents
     st.session_state.chunked_documents = chunked_documents
     st.session_state.X = X
+    
+    # 업로드 완료 메시지 표시
+    st.success(f"파일 '{uploaded_file.name}' 업로드가 완료되었습니다!")
+
 
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
