@@ -172,9 +172,6 @@ else:
         st.session_state.documents = load_data()
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
-    if "log" not in st.session_state:
-        st.session_state.log = []
-
     if prompt := st.chat_input("What is up?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
@@ -192,18 +189,13 @@ else:
             with st.chat_message("assistant"):
                 st.markdown(answer)
             
-            # 질의 응답 로그 남기기
-            log_entry = {
-                "질문": modified_question,
-                "답변": answer
-            }
-            st.session_state.log.append(log_entry)
-            
-            # 로그 출력
-            st.write("질의 응답 로그:")
-            for i, entry in enumerate(st.session_state.log):
-                st.write(f"질문 {i+1}: {entry['질문']}")
-                st.write(f"답변 {i+1}: {entry['답변']}\n")
+            # 대화 로그 출력
+            st.write("대화 로그:")
+            for i, msg in enumerate(st.session_state.messages):
+                if msg['role'] == 'user':
+                    st.write(f"질문 {i+1}: {msg['content']}")
+                else:
+                    st.write(f"답변 {i+1}: {msg['content']}\n")
         
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
