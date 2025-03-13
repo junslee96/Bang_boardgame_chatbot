@@ -147,6 +147,11 @@ def replace_terms(text):
         text = re.sub(key, value, text)
     return text
 
+# 질문 변환 기법 적용
+def transform_query(query):
+    transformed_query = query + " 관련 정보"
+    return transformed_query
+
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
 st.write(
@@ -159,34 +164,41 @@ if not openai_api_key:
 else:
     client = openai.OpenAI(api_key=openai_api_key)
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# 대화 기록 초기화 및 유지
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    if "documents" not in st.session_state:
-        st.session_state.documents = load_data()
-        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+if "documents" not in st.session_state:
+    st.session_state.documents = load_data()
+    st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
-    if prompt := st.chat_input("What is up?"):
-        
-        # 기존 메시지를 유지하며 새로운 메시지 추가
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        with st.chat_message("user"):
-            st.markdown(prompt)
+# 대화 기록 출력 (기존 메시지 유지)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-        modified_question = replace_terms(prompt)
+# 새로운 질문 처리 및 추가
+if prompt := st.chat_input("What is up?"):
+    
+    # 사용자 메시지 추가 및 출력
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    modified_question = replace_terms(prompt)
+    
+    try:
+        # 대화 기록 생성 (모든 메시지를 포함)
+        conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
         
-        try:
-            # 대화 기록 생성 (모든 메시지를 포함)
-            conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
-            
-            answer = generate_response(modified_question, conversation_history)
-            
-            # 답변 추가
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-            
-            with st.chat_message("assistant"):
-                st.markdown(answer)
+        answer = generate_response(modified_question, conversation_history)
         
-        except Exception as e:
-            st.error(f"An error occurred while generating a response: {e}")
+        # 답변 추가 및 출력
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+    
+    except Exception as e:
+        st.error(f"An error occurred while generating a response: {e}")
