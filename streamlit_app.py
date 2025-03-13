@@ -139,14 +139,7 @@ def generate_response(query):
     )
     
     answer = response.choices[0].message.content
-    
-    # merged_data의 문맥을 반영하여 후처리
-    processed_answer = f"질문: {query}\n답변: {answer}"
-    
-    # merged_data의 형식이나 구조를 따르도록 수정
-    # 예: 특정 키워드 삽입, 문장 구조 조정 등
-    
-    return processed_answer
+    return answer
 
 
 
