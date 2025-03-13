@@ -74,11 +74,11 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
         model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
         query_vec = model.encode([query])
-        
+
         # 문서의 청크별 임베딩을 사용하여 유사성을 계산
         similarities = np.dot(X, query_vec.T[0]).flatten()
         top_indices = similarities.argsort()[-top_k:][::-1]
-        
+
         # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
         chunk_to_doc_map = {}
         chunk_index = 0
@@ -87,15 +87,15 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
             for _ in chunked_doc:
                 chunk_to_doc_map[chunk_index] = doc
                 chunk_index += 1
-        
+
         # top_k 개의 문서 인덱스를 전체 문서로 매핑
         top_docs = []
         for idx in top_indices:
             if idx in chunk_to_doc_map:
                 top_docs.append(chunk_to_doc_map[idx])
-        
+
         return top_docs
-    
+
     except Exception as e:
         print(f"Error in retrieve_similar_documents: {e}")
         return []
@@ -103,7 +103,7 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
 def create_context(retrieved_docs):
     mecab = Mecab()
     stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
-    
+
     relevant_sentences = []
     for doc in retrieved_docs:
         sentences = doc.split('. ')
@@ -111,13 +111,13 @@ def create_context(retrieved_docs):
             morphs = mecab.morphs(sentence)
             if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
                 relevant_sentences.append(sentence)
-    
+
     # 문장의 중요도를 평가하여 상위 N개의 문장을 선택
     sentence_scores = []
     for sentence in relevant_sentences:
         score = len([morph for morph in mecab.morphs(sentence) if morph not in stop_words])
         sentence_scores.append((sentence, score))
-    
+
     top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
     return '\n'.join([sentence for sentence, _ in top_sentences])
 
@@ -125,7 +125,7 @@ def generate_response(query, conversation_history, persona_profile):
     retrieved_docs = retrieve_similar_documents(query, st.session_state.chunked_documents, st.session_state.X)
     context = create_context(retrieved_docs)
     answer_prompt = f"{persona_profile}\n\n{conversation_history}\n\n질문: {query}\n답변:"
-    
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -137,7 +137,7 @@ def generate_response(query, conversation_history, persona_profile):
         frequency_penalty=1.2,
         stream=False
     )
-    
+
     answer = response.choices[0].message.content
     return answer
 
@@ -195,26 +195,26 @@ for message in st.session_state.messages:
 
 # 새로운 질문 처리 및 추가
 if prompt := st.chat_input("What is up?"):
-    
+
     # 사용자 메시지 추가 및 출력
     st.session_state.messages.append({"role": "user", "content": prompt})
-    
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
     modified_question = replace_terms(prompt)
-    
+
     try:
         # 대화 기록 생성 (모든 메시지를 포함)
         conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
-        
+
         answer = generate_response(modified_question, conversation_history, persona_profile)
-        
+
         # 답변 추가 및 출력
         st.session_state.messages.append({"role": "assistant", "content": answer})
-        
+
         with st.chat_message("assistant"):
             st.markdown(answer)
-    
+
     except Exception as e:
         st.error(f"An error occurred while generating a response: {e}")
