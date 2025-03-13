@@ -188,14 +188,6 @@ else:
             
             with st.chat_message("assistant"):
                 st.markdown(answer)
-            
-            # 대화 로그 출력
-            st.write("대화 로그:")
-            for i, msg in enumerate(st.session_state.messages):
-                if msg['role'] == 'user':
-                    st.write(f"질문 {i+1}: {msg['content']}")
-                else:
-                    st.write(f"답변 {i+1}: {msg['content']}\n")
         
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
