@@ -132,9 +132,9 @@ def generate_response(query, conversation_history):
             {"role": "assistant", "content": answer_prompt}
         ],
         max_tokens=1000,
-        temperature=0.2,  # 낮은 온도 설정
-        top_p=0.01,  # top_p를 0에 가깝게 설정
-        frequency_penalty=1.2,  # frequency_penalty 사용
+        temperature=0.2,
+        top_p=0.01,
+        frequency_penalty=1.2,
         stream=False
     )
     
@@ -147,16 +147,10 @@ def replace_terms(text):
         text = re.sub(key, value, text)
     return text
 
-# 질문 변환 기법 적용
-def transform_query(query):
-    transformed_query = query + " 관련 정보"
-    return transformed_query
-
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
 st.write(
     "OpenAI의 gpt-4o-mini 모델을 사용해서 만든 간단한 생성형 챗봇입니다."
-    " '뱅 보드게임에서'라는 말과 함께 질문해주세요!"
 )
 
 openai_api_key = st.text_input("OpenAI API Key", type="password")
@@ -173,18 +167,22 @@ else:
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
     if prompt := st.chat_input("What is up?"):
-        previous_messages = st.session_state.messages.copy()  # 이전 메시지 복사
+        
+        # 기존 메시지를 유지하며 새로운 메시지 추가
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("user"):
             st.markdown(prompt)
-    
+
         modified_question = replace_terms(prompt)
         
         try:
-            conversation_history = '\n'.join([msg['content'] for msg in previous_messages])
+            # 대화 기록 생성 (모든 메시지를 포함)
+            conversation_history = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
+            
             answer = generate_response(modified_question, conversation_history)
             
+            # 답변 추가
             st.session_state.messages.append({"role": "assistant", "content": answer})
             
             with st.chat_message("assistant"):
@@ -192,4 +190,3 @@ else:
         
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
-
