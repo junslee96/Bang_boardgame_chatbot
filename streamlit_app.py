@@ -45,6 +45,57 @@ if uploaded_file is not None:
     # 업로드 완료 메시지 표시
     st.success(f"파일 '{uploaded_file.name}' 업로드가 완료되었습니다!")
 
+def retrieve_similar_documents(query, documents, X, top_k=3):
+    try:
+        model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
+        query_vec = model.encode([query])
+        
+        # 문서의 청크별 임베딩을 사용하여 유사성을 계산
+        similarities = np.dot(X, query_vec.T[0]).flatten()
+        top_indices = similarities.argsort()[-top_k:][::-1]
+        
+        # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
+        chunk_to_doc_map = {}
+        chunk_index = 0
+        for doc in documents:
+            chunked_doc = chunk_text(doc)
+            for _ in chunked_doc:
+                chunk_to_doc_map[chunk_index] = doc
+                chunk_index += 1
+        
+        # top_k 개의 문서 인덱스를 전체 문서로 매핑
+        top_docs = []
+        for idx in top_indices:
+            if idx in chunk_to_doc_map:
+                top_docs.append(chunk_to_doc_map[idx])
+        
+        return top_docs
+    
+    except Exception as e:
+        print(f"Error in retrieve_similar_documents: {e}")
+        return []
+
+def create_context(retrieved_docs):
+    mecab = Mecab()
+    stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
+    
+    relevant_sentences = []
+    for doc in retrieved_docs:
+        sentences = doc.split('. ')
+        for sentence in sentences:
+            morphs = mecab.morphs(sentence)
+            if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
+                relevant_sentences.append(sentence)
+    
+    # 문장의 중요도를 평가하여 상위 N개의 문장을 선택
+    sentence_scores = []
+    for sentence in relevant_sentences:
+        score = len([morph for morph in mecab.morphs(sentence) if morph not in stop_words])
+        sentence_scores.append((sentence, score))
+    
+    top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
+    return '\n'.join([sentence for sentence, _ in top_sentences])
+
 
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
@@ -114,56 +165,7 @@ def vectorize_documents(documents):
     X = model.encode(chunked_documents)
     return chunked_documents, X
 
-def retrieve_similar_documents(query, documents, X, top_k=3):
-    try:
-        model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
-        query_vec = model.encode([query])
-        
-        # 문서의 청크별 임베딩을 사용하여 유사성을 계산
-        similarities = np.dot(X, query_vec.T[0]).flatten()
-        top_indices = similarities.argsort()[-top_k:][::-1]
-        
-        # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
-        chunk_to_doc_map = {}
-        chunk_index = 0
-        for doc in documents:
-            chunked_doc = chunk_text(doc)
-            for _ in chunked_doc:
-                chunk_to_doc_map[chunk_index] = doc
-                chunk_index += 1
-        
-        # top_k 개의 문서 인덱스를 전체 문서로 매핑
-        top_docs = []
-        for idx in top_indices:
-            if idx in chunk_to_doc_map:
-                top_docs.append(chunk_to_doc_map[idx])
-        
-        return top_docs
-    
-    except Exception as e:
-        print(f"Error in retrieve_similar_documents: {e}")
-        return []
 
-def create_context(retrieved_docs):
-    mecab = Mecab()
-    stop_words = set(['를', '을', '는', '이', '가', '에', '와', '과', '으로', '에서', '까지'])
-    
-    relevant_sentences = []
-    for doc in retrieved_docs:
-        sentences = doc.split('. ')
-        for sentence in sentences:
-            morphs = mecab.morphs(sentence)
-            if len(morphs) > 10 and not any(morph in stop_words for morph in morphs):
-                relevant_sentences.append(sentence)
-    
-    # 문장의 중요도를 평가하여 상위 N개의 문장을 선택
-    sentence_scores = []
-    for sentence in relevant_sentences:
-        score = len([morph for morph in mecab.morphs(sentence) if morph not in stop_words])
-        sentence_scores.append((sentence, score))
-    
-    top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
-    return '\n'.join([sentence for sentence, _ in top_sentences])
 
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
