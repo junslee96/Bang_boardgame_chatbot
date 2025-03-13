@@ -32,7 +32,7 @@ def load_data():
             merged_data = response_merged.json()
         else:
             print(f"Failed to read merged data. Status code: {response_merged.status_code}")
-            return None
+            return None, None
 
         response_qa = requests.get(output_data_url)
         if response_qa.status_code == 200:
@@ -42,6 +42,7 @@ def load_data():
             print(f"Failed to read QA data. Status code: {response_qa.status_code}")
             qa_df = None
 
+        # 두 데이터셋을 통합하여 문서 생성
         documents = []
         for item in merged_data:
             if 'content' in item:
@@ -49,11 +50,13 @@ def load_data():
 
         if qa_df is not None:
             for _, row in qa_df.iterrows():
-                documents.append(f"질문: {row['질문']} 답변: {row['답변']}")
+                # 질문과 답변을 하나의 문서로 통합
+                documents.append(f"질문: {row['질문']}\n답변: {row['답변']}")
+
         return documents
     except Exception as e:
         print(f"Error loading data: {e}")
-        return None
+        return None, None
 
 def chunk_text(text, chunk_size=200):
     words = text.split()
@@ -78,13 +81,18 @@ def retrieve_similar_documents(query, documents, X, top_k=3):
         
         # 문서의 원본 청크가 아닌 전체 문서를 반환하기 위해 인덱스를 매핑
         chunk_to_doc_map = {}
-        for i, doc in enumerate(documents):
-            chunk_to_doc_map[i] = doc
+        chunk_index = 0
+        for doc in documents:
+            chunked_doc = chunk_text(doc)
+            for _ in chunked_doc:
+                chunk_to_doc_map[chunk_index] = doc
+                chunk_index += 1
         
         # top_k 개의 문서 인덱스를 전체 문서로 매핑
         top_docs = []
         for idx in top_indices:
-            top_docs.append(chunk_to_doc_map[idx])
+            if idx in chunk_to_doc_map:
+                top_docs.append(chunk_to_doc_map[idx])
         
         return top_docs
     
