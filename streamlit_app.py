@@ -137,8 +137,12 @@ def generate_response(query):
         frequency_penalty=1.1,  # frequency_penalty 사용
         stream=False
     )
-    
+
     answer = response.choices[0].message.content
+    
+    # merged_data 스타일로 후처리
+    processed_answer = f"질문: {query}\n답변: {answer}"
+
     return answer
 
 
