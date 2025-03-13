@@ -141,11 +141,7 @@ def generate_response(query):
     
     answer = response.choices[0].message.content
     
-    # 답변을 간단하게 구성
-    sentences = answer.split('. ')
-    simplified_answer = sentences[0]  # 첫 문장만 사용
-    
-    return simplified_answer
+    return answer
 
 
 
