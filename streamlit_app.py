@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import openai
@@ -18,46 +17,86 @@ try:
 except RuntimeError:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
-# 깃허브 저장소 정보
-owner = "junslee96"
-repo = "Bang_boardgame_chatbot"
-file_path = "prompt_data"
+# 파일 업로더 위젯 추가
+uploaded_file = st.file_uploader("첨부파일을 선택하세요 (merged_data.json)")
 
-merged_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/merged_data.json"
-output_data_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{file_path}/output_data.json"
+if uploaded_file is not None:
+    # 업로드된 파일을 JSON으로 로딩
+    merged_data = json.load(uploaded_file)
+    
+    # 문서 생성
+    documents = []
+    for item in merged_data:
+        if 'content' in item:
+            documents.append(item['content'])
+    
+    # 문서 벡터화
+    model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
+    chunked_documents = []
+    for doc in documents:
+        chunked_documents.extend(doc.split())
+    X = model.encode(chunked_documents)
+    
+    # 세션 상태에 저장
+    st.session_state.documents = documents
+    st.session_state.chunked_documents = chunked_documents
+    st.session_state.X = X
 
-def load_data():
-    try:
-        response_merged = requests.get(merged_data_url)
-        if response_merged.status_code == 200:
-            merged_data = response_merged.json()
-        else:
-            print(f"Failed to read merged data. Status code: {response_merged.status_code}")
-            return None, None
+# Streamlit 앱 시작
+st.title("🤠 뱅 보드게임 챗봇")
+st.write(
+    "첨부파일을 기반으로 만든 간단한 생성형 챗봇입니다."
+    " '뱅 보드게임에서'라는 말과 함께 질문해주세요!"
+)
 
-        response_qa = requests.get(output_data_url)
-        if response_qa.status_code == 200:
-            qa_data = response_qa.json()
-            qa_df = pd.DataFrame(qa_data)
-        else:
-            print(f"Failed to read QA data. Status code: {response_qa.status_code}")
-            qa_df = None
+openai_api_key = st.text_input("OpenAI API Key", type="password")
+if not openai_api_key:
+    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
+else:
+    client = openai.OpenAI(api_key=openai_api_key)
 
-        # 두 데이터셋을 통합하여 문서 생성
-        documents = []
-        for item in merged_data:
-            if 'content' in item:
-                documents.append(item['content'])
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-        if qa_df is not None:
-            for _, row in qa_df.iterrows():
-                # 질문과 답변을 하나의 문서로 통합
-                documents.append(f"질문: {row['질문']}\n답변: {row['답변']}")
+    if "documents" not in st.session_state:
+        st.session_state.documents = []
+        st.session_state.chunked_documents = []
+        st.session_state.X = []
 
-        return documents
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        return None, None
+    if prompt := st.chat_input("What is up?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        modified_question = prompt
+        
+        try:
+            retrieved_docs = retrieve_similar_documents(modified_question, st.session_state.chunked_documents, st.session_state.X)
+            context = create_context(retrieved_docs)
+            answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "assistant", "content": answer_prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.2,  # 낮은 온도 설정
+                top_p=0.95,  # top_p를 0에 가깝게 설정
+                frequency_penalty=1.3,  # frequency_penalty 사용
+                stream=False
+            )
+            
+            answer = response.choices[0].message.content
+            
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+            
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+        
+        except Exception as e:
+            st.error(f"An error occurred while generating a response: {e}")
 
 def chunk_text(text, chunk_size=200):
     words = text.split()
@@ -122,30 +161,6 @@ def create_context(retrieved_docs):
     top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
     return '\n'.join([sentence for sentence, _ in top_sentences])
 
-def generate_response(query):
-    retrieved_docs = retrieve_similar_documents(query, st.session_state.chunked_documents, st.session_state.X)
-    context = create_context(retrieved_docs)
-    answer_prompt = f"컨텍스트: {context}\n\n질문: {query}\n답변:"
-    
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "assistant", "content": answer_prompt}
-        ],
-        max_tokens=1000,
-        temperature=0.2,  # 낮은 온도 설정
-        top_p=0.95,  # top_p를 0에 가깝게 설정
-        frequency_penalty=1.3,  # frequency_penalty 사용
-        stream=False
-    )
-    
-    answer = response.choices[0].message.content
-    
-    return answer
-
-
-
-
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
     for key, value in replace_dict.items():
@@ -156,42 +171,3 @@ def replace_terms(text):
 def transform_query(query):
     transformed_query = query + " 관련 정보"
     return transformed_query
-
-# Streamlit 앱 시작
-st.title("🤠 뱅 보드게임 챗봇")
-st.write(
-    "OpenAI의 gpt-4o-mini 모델을 사용해서 만든 간단한 생성형 챗봇입니다."
-    " '뱅 보드게임에서'라는 말과 함께 질문해주세요!"
-)
-
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
-    client = openai.OpenAI(api_key=openai_api_key)
-
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    if "documents" not in st.session_state:
-        st.session_state.documents = load_data()
-        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
-
-    if prompt := st.chat_input("What is up?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        modified_question = replace_terms(prompt)
-        
-        try:
-            answer = generate_response(modified_question)
-            
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-            
-            with st.chat_message("assistant"):
-                st.markdown(answer)
-        
-        except Exception as e:
-            st.error(f"An error occurred while generating a response: {e}")
