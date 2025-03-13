@@ -133,13 +133,14 @@ def generate_response(query):
         ],
         max_tokens=1000,
         temperature=0.2,  # 낮은 온도 설정
-        top_p=0.1,  # top_p를 0에 가깝게 설정
-        repetition_penalty=1.2,  # 반복되는 답변을 줄이기 위해 penalty 설정
+        top_p=0.01,  # top_p를 0에 가깝게 설정
+        frequency_penalty=1.1,  # frequency_penalty 사용
         stream=False
     )
     
     answer = response.choices[0].message.content
     return answer
+
 
 def replace_terms(text):
     replace_dict = {'사람': '플레이어'}
