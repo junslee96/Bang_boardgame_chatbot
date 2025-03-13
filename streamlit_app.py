@@ -44,7 +44,7 @@ if uploaded_file is not None:
     
     # 업로드 완료 메시지 표시
     st.success(f"파일 '{uploaded_file.name}' 업로드가 완료되었습니다!")
-    
+
 def chunk_text(text, chunk_size=200):
     words = text.split()
     return [' '.join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
@@ -57,17 +57,6 @@ def vectorize_documents(documents):
     X = model.encode(chunked_documents)
     return chunked_documents, X
 
-
-def replace_terms(text):
-    replace_dict = {'사람': '플레이어'}
-    for key, value in replace_dict.items():
-        text = re.sub(key, value, text)
-    return text
-
-# 질문 변환 기법 적용
-def transform_query(query):
-    transformed_query = query + " 관련 정보"
-    return transformed_query
 def retrieve_similar_documents(query, documents, X, top_k=3):
     try:
         model = SentenceTransformer('sentence-transformers/distiluse-base-multilingual-cased-v2')
@@ -119,7 +108,16 @@ def create_context(retrieved_docs):
     top_sentences = sorted(sentence_scores, key=lambda x: x[1], reverse=True)[:5]
     return '\n'.join([sentence for sentence, _ in top_sentences])
 
+def replace_terms(text):
+    replace_dict = {'사람': '플레이어'}
+    for key, value in replace_dict.items():
+        text = re.sub(key, value, text)
+    return text
 
+# 질문 변환 기법 적용
+def transform_query(query):
+    transformed_query = query + " 관련 정보"
+    return transformed_query
 
 # Streamlit 앱 시작
 st.title("🤠 뱅 보드게임 챗봇")
@@ -155,6 +153,10 @@ else:
             context = create_context(retrieved_docs)
             answer_prompt = f"컨텍스트: {context}\n\n질문: {modified_question}\n답변:"
             
+            # 이전 대화 기록을 포함하여 답변 생성
+            conversation_history = '\n'.join([msg['content'] for msg in st.session_state.messages])
+            answer_prompt = f"{conversation_history}\n\n{answer_prompt}"
+            
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -176,5 +178,3 @@ else:
         
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
-
-
