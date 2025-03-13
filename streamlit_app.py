@@ -133,9 +133,9 @@ def generate_response(query):
             {"role": "assistant", "content": answer_prompt}
         ],
         max_tokens=1000,
-        temperature=0.2,  # 낮은 온도 설정
+        temperature=0.1,  # 낮은 온도 설정
         top_p=0.01,  # top_p를 0에 가깝게 설정
-        frequency_penalty=1.2,  # frequency_penalty 사용
+        frequency_penalty=1.5,  # frequency_penalty 사용
         stream=False
     )
     
