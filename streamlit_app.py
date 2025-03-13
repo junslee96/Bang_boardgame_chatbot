@@ -170,7 +170,12 @@ if "messages" not in st.session_state:
 
 if "documents" not in st.session_state:
     st.session_state.documents = load_data()
-    st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+    if st.session_state.documents is not None:
+        st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
+    else:
+        st.session_state.chunked_documents = []
+        st.session_state.X = []
+
 
 # 페르소나 프로필 생성
 persona_profile = """
