@@ -173,15 +173,16 @@ else:
         st.session_state.chunked_documents, st.session_state.X = vectorize_documents(st.session_state.documents)
 
     if prompt := st.chat_input("What is up?"):
+        previous_messages = st.session_state.messages.copy()  # 이전 메시지 복사
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("user"):
             st.markdown(prompt)
-
+    
         modified_question = replace_terms(prompt)
         
         try:
-            conversation_history = '\n'.join([msg['content'] for msg in st.session_state.messages[:-1]])
+            conversation_history = '\n'.join([msg['content'] for msg in previous_messages])
             answer = generate_response(modified_question, conversation_history)
             
             st.session_state.messages.append({"role": "assistant", "content": answer})
@@ -191,3 +192,4 @@ else:
         
         except Exception as e:
             st.error(f"An error occurred while generating a response: {e}")
+
